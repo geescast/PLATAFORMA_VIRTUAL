@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ventanilla - Control de Trámites DES y DAE</title>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --secondary: #0284c7;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #cbd5e1;
+    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); margin: 0; padding: 20px; color: #1e293b; }
+    .container { max-width: 1100px; margin: auto; }
+    .card { background: var(--card); border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06); margin-bottom: 20px; }
+    
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid var(--border); }
+    .tab-btn { padding: 10px 18px; border: none; background: none; font-weight: bold; cursor: pointer; color: #64748b; font-size: 14px; border-bottom: 3px solid transparent; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
+    input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+    
+    .btn { background: var(--secondary); color: white; border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
+    .btn:hover { background: #0369a1; }
+    .btn-admin { background: #4f46e5; }
+    .btn-green { background: #15803d; }
+    .btn-purple { background: #7e22ce; }
+    .btn-amber { background: #d97706; }
+    
+    .selector-tramite { background: #eff6ff; border: 2px solid #3b82f6; border-radius: 6px; padding: 12px; margin-bottom: 14px; }
+    .box-cotejo { background: #fafafa; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; margin-bottom: 14px; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; vertical-align: top; }
+    th { background: #f8fafc; font-weight: 600; }
+    
+    .badge { padding: 3px 6px; border-radius: 10px; font-size: 10px; font-weight: bold; display: inline-block; }
+    .badge-des { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .badge-dae { background: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe; }
+    .badge-ok { background: #dcfce7; color: #166534; }
+
+    .modal-back { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
+    .modal-box { background: white; padding: 22px; border-radius: 8px; width: 480px; max-width: 90%; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="cambiarTab('tabVentanilla')">Ventanilla y Gestión Escolar (ESCA)</button>
+    <button class="tab-btn" onclick="cambiarTab('tabAlumno')">Portal del Alumno (Pagos y Consulta)</button>
+  </div>
+
+  <!-- SECCIÓN VENTANILLA / ADMINISTRACIÓN -->
+  <div id="tabVentanilla">
+    <div id="secLogin" class="card" style="max-width: 380px; margin: 40px auto;">
+      <h3 style="margin-top:0; color:var(--primary); text-align:center;">Acceso a Ventanilla</h3>
+      <div style="margin-bottom:12px;">
+        <label>Usuario:</label>
+        <input type="text" id="logUser" placeholder="lourdes, alicia, imelda.admin, oscar.admin...">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label>Contraseña:</label>
+        <input type="password" id="logPass" placeholder="••••••••">
+      </div>
+      <button class="btn" style="width:100%;" onclick="iniciarSesion()">Ingresar</button>
+    </div>
+
+    <div id="secPrincipal" style="display:none;">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #e2e8f0; padding-bottom:8px; margin-bottom:12px;">
+          <div>
+            <h2 style="margin:0; color:var(--primary);">Control de Trámites CP y CM</h2>
+            <span id="txtUserSesion" style="font-size:12px; color:#64748b; font-weight:bold;"></span>
+          </div>
+          <button class="btn" onclick="cerrarSesion()" style="background:#64748b; font-size:11px; padding:4px 8px;">Salir</button>
+        </div>
+
+        <div class="selector-tramite">
+          <label style="color:var(--primary); font-size:13px;">1. SELECCIONE EL TRÁMITE A INGRESAR EN VENTANILLA:</label>
+          <select id="selTipoTramite" onchange="adaptarFormulario()">
+            <option value="CP">CAMBIO DE PLAN DE ESTUDIOS (Serie CP-2026-XXXX)</option>
+            <option value="CM">CAMBIO DE MODALIDAD (Serie CM-2026-XXXX)</option>
+          </select>
+        </div>
+
+        <form id="formCaptura" onsubmit="registrarSolicitud(event)">
+          <div class="grid">
+            <div>
+              <label>No. de Boleta:</label>
+              <input type="text" id="inpBoleta" required maxlength="12" placeholder="2022600123">
+            </div>
+            <div>
+              <label>Nombre Completo:</label>
+              <input type="text" id="inpNombre" required placeholder="APELLIDOS Y NOMBRES">
+            </div>
+          </div>
+
+          <div class="grid">
+            <div>
+              <label>Correo Electrónico (Notificaciones):</label>
+              <input type="email" id="inpCorreo" required placeholder="alumno@ipn.mx">
+            </div>
+            <div>
+              <label>Carrera de Origen:</label>
+              <input type="text" id="inpCarrera" required placeholder="Licenciatura en Administración">
+            </div>
+          </div>
+
+          <div class="grid">
+            <div>
+              <label>Modalidad de Origen:</label>
+              <select id="inpModalidadOrigen">
+                <option value="Escolarizada">Escolarizada</option>
+                <option value="No Escolarizada">No Escolarizada (Polivirtual)</option>
+                <option value="Mixta">Mixta</option>
+              </select>
+            </div>
+            <div>
+              <label id="lblDestino">Plan Solicitado:</label>
+              <input type="text" id="inpDestino" required placeholder="Plan 2020">
+            </div>
+          </div>
+
+          <div class="box-cotejo">
+            <label id="txtTituloCotejo" style="margin-bottom:8px; font-weight:bold;"></label>
+            <div id="contenedorChecklist"></div>
+          </div>
+
+          <button type="submit" class="btn">Registrar en Ventanilla</button>
+        </form>
+      </div>
+
+      <!-- BANDEJA GENERAL CON DEPENDENCIAS EXTERNAS (DES / DAE) -->
+      <div class="card">
+        <h3 style="margin-top:0; color:var(--primary);">Bandeja de Gestión Institucional (ESCA ➔ DES ➔ DAE)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Folio</th>
+              <th>Boleta y Alumno</th>
+              <th>Estatus y Dependencia</th>
+              <th>Comprobante de Pago</th>
+              <th>Acción Resolutiva (Imelda / Oscar)</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpoTabla"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN PORTAL DEL ALUMNO -->
+  <div id="tabAlumno" style="display:none;">
+    <div class="card" style="max-width: 650px; margin: auto;">
+      <h2 style="color:var(--primary); margin-top:0;">Portal del Alumno</h2>
+      <div class="grid">
+        <div>
+          <label>Folio del Trámite:</label>
+          <input type="text" id="alFolio" placeholder="CP-2026-0001">
+        </div>
+        <div>
+          <label>Boleta:</label>
+          <input type="text" id="alBoleta" placeholder="2022600000">
+        </div>
+      </div>
+      <button class="btn" onclick="consultarAlumno()">Consultar Estatus</button>
+
+      <!-- CARGA DE PAGO CONDICIONADA -->
+      <div id="areaPago" style="display:none; margin-top:16px; border-top:2px solid #e2e8f0; padding-top:14px;">
+        <div style="background:#f0fdf4; border:1px solid #86efac; padding:10px; border-radius:6px; margin-bottom:12px;">
+          <h4 style="margin:0; color:#15803d;" id="alTituloPago"></h4>
+          <span style="font-size:12px; color:#166534;" id="alSubtituloPago"></span>
+        </div>
+        <form onsubmit="enviarPagoAlumno(event)">
+          <div style="margin-bottom:12px;">
+            <label>Método de Pago:</label>
+            <select id="alMetodo" onchange="alternarCamposPago()">
+              <option value="VOUCHER">Voucher de Ventanilla Bancaria / Cajero</option>
+              <option value="TRANSFERENCIA">Transferencia SPEI</option>
+            </select>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label id="lblComp1">Archivo del Voucher (PDF o Imagen):</label>
+            <input type="file" id="fComp1" required accept=".pdf,image/*">
+          </div>
+          <div id="boxCep" style="display:none; margin-bottom:12px; background:#fffbeb; padding:10px; border-radius:6px;">
+            <label style="color:#854d0e;">Comprobante CEP de Banxico (Obligatorio para SPEI):</label>
+            <input type="file" id="fCep" accept=".pdf,image/*">
+          </div>
+          <button type="submit" class="btn" style="width:100%;">Subir Comprobante</button>
+        </form>
+      </div>
+
+      <!-- VISUALIZACIÓN DE ESTATUS Y DESCARGA DE OFICIOS -->
+      <div id="areaOficios" style="display:none; margin-top:16px; border-top:2px solid #e2e8f0; padding-top:14px;">
+        <h4 style="margin-top:0;">Documentos Oficiales Emitidos:</h4>
+        <div id="btnDta"></div>
+        <div id="btnEquiv" style="margin-top:8px;"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL REGISTRO DTA RECIBIDO DE DES -->
+<div id="mdDTA" class="modal-back">
+  <div class="modal-box">
+    <h3 style="margin-top:0; color:var(--primary);">Registrar DTA emitido por la DES</h3>
+    <p style="font-size:12px; color:#475569;">Sube el DTA emitido por la Dirección de Educación Superior. Al guardarlo, se notificará al alumno con el archivo adjunto y se solicitará el pago de equivalencias.</p>
+    <form onsubmit="guardarDtaDes(event)">
+      <input type="hidden" id="mdFolioDTA">
+      <div style="margin-bottom:14px;">
+        <label>Archivo DTA emitido por DES (PDF):</label>
+        <input type="file" id="mdFileDTA" required accept=".pdf">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btn" style="background:#64748b;" onclick="cerrarModales()">Cancelar</button>
+        <button type="submit" class="btn btn-green">Notificar Alumno y Pedir Pago</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL REGISTRO EQUIVALENCIAS RECIBIDAS DE DAE -->
+<div id="mdEquiv" class="modal-back">
+  <div class="modal-box">
+    <h3 style="margin-top:0; color:var(--primary);">Registrar Dictamen de Equivalencias de DAE</h3>
+    <p style="font-size:12px; color:#475569;">Sube el Dictamen emitido por la Dirección de Administración Escolar. Al guardarlo, se enviará al alumno y el trámite quedará formalmente CONCLUIDO.</p>
+    <form onsubmit="guardarEquivDae(event)">
+      <input type="hidden" id="mdFolioEquiv">
+      <div style="margin-bottom:14px;">
+        <label>Dictamen de Equivalencias DAE (PDF):</label>
+        <input type="file" id="mdFileEquiv" required accept=".pdf">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btn" style="background:#64748b;" onclick="cerrarModales()">Cancelar</button>
+        <button type="submit" class="btn btn-purple">Concluir Trámite Definitivamente</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  let SESION = null;
+  const API = "http://127.0.0.1:8000/api";
+
+  const REQUISITOS = {
+    CP: ["Dictamen Técnico / Equivalencias Previas", "Boleta Global de Calificaciones / Kardex"],
+    CM: ["Carta de Exposición de Motivos", "Documentos Comprobatorios", "Constancia de Curso Propedéutico Acreditado"]
+  };
+
+  function cambiarTab(id) {
+    document.getElementById("tabVentanilla").style.display = id === 'tabVentanilla' ? 'block' : 'none';
+    document.getElementById("tabAlumno").style.display = id === 'tabAlumno' ? 'block' : 'none';
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    event.target.classList.add("active");
+  }
+
+  function adaptarFormulario() {
+    const t = document.getElementById("selTipoTramite").value;
+    const cont = document.getElementById("contenedorChecklist");
+    document.getElementById("txtTituloCotejo").innerText = t === 'CP' ? 'Requisitos Cambio de Plan (Etapa 1):' : 'Requisitos Cambio de Modalidad (Etapa 1):';
+    cont.innerHTML = "";
+    REQUISITOS[t].forEach(r => {
+      cont.innerHTML += `<label style="display:block; margin-bottom:4px;"><input type="checkbox" name="chkDoc" value="${r}" checked> ${r}</label>`;
+    });
+  }
+
+  async function iniciarSesion() {
+    const u = document.getElementById("logUser").value.trim().toLowerCase();
+    const p = document.getElementById("logPass").value;
+    const r = await fetch(`${API}/login`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({username: u, password: p}) });
+    if(!r.ok) return alert("Credenciales incorrectas");
+    SESION = await r.json();
+    document.getElementById("secLogin").style.display = "none";
+    document.getElementById("secPrincipal").style.display = "block";
+    document.getElementById("txtUserSesion").innerText = `${SESION.usuario.nombre} [${SESION.usuario.rol}]`;
+    adaptarFormulario();
+    cargarBandeja();
+  }
+
+  function cerrarSesion() {
+    SESION = null;
+    document.getElementById("secLogin").style.display = "block";
+    document.getElementById("secPrincipal").style.display = "none";
+  }
+
+  async function registrarSolicitud(e) {
+    e.preventDefault();
+    const t = document.getElementById("selTipoTramite").value;
+    const docs = Array.from(document.querySelectorAll('input[name="chkDoc"]:checked')).map(c => c.value);
+    const payload = {
+      tipo_tramite: t,
+      boleta: document.getElementById("inpBoleta").value.trim(),
+      nombre_alumno: document.getElementById("inpNombre").value.trim(),
+      correo_alumno: document.getElementById("inpCorreo").value.trim(),
+      carrera_origen: document.getElementById("inpCarrera").value.trim(),
+      modalidad_origen: document.getElementById("inpModalidadOrigen").value,
+      plan_o_modalidad_destino: document.getElementById("inpDestino").value.trim(),
+      docs_cotejados: docs,
+      observaciones: ""
+    };
+    const res = await fetch(`${API}/solicitudes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SESION.token}` },
+      body: JSON.stringify(payload)
+    });
+    if(res.ok) {
+      alert("Solicitud registrada con éxito.");
+      cargarBandeja();
+    }
+  }
+
+  async function cargarBandeja() {
+    if(!SESION) return;
+    const res = await fetch(`${API}/solicitudes`, { headers: {"Authorization": `Bearer ${SESION.token}`} });
+    const data = await res.json();
+    const tbody = document.getElementById("cuerpoTabla");
+    tbody.innerHTML = "";
+    const esAdmin = SESION.usuario.rol === "ADMIN";
+
+    data.forEach(i => {
+      let badgeEstatus = `<span class="badge badge-ok">${i.estatus}</span>`;
+      let infoPago = "-";
+      let btnAccion = "-";
+
+      // Manejo visual de dependencias externas
+      if (i.estatus === "PAGO_VALIDADO_EN_ESPERA_DES") {
+        badgeEstatus = `<span class="badge badge-des">⏳ EN ESPERA DE DES (DTA)</span>`;
+      } else if (i.estatus === "PAGO_VALIDADO_EN_ESPERA_DAE") {
+        badgeEstatus = `<span class="badge badge-dae">⏳ EN ESPERA DE DAE (EQUIV)</span>`;
+      }
+
+      if (i.archivo_comp_dta && !i.archivo_dta_des) infoPago = `DTA (${i.metodo_pago_dta}): ${i.archivo_comp_dta}`;
+      if (i.archivo_comp_equiv) infoPago += `<br>Equiv (${i.metodo_pago_equiv}): ${i.archivo_comp_equiv}`;
+
+      // Acciones de Imelda / Oscar
+      if (esAdmin) {
+        if(i.estatus === "RECIBIDO") {
+          btnAccion = `<button class="btn btn-admin" onclick="accionProcedente('${i.folio}')">1. Procedente (Pedir Pago DTA)</button>`;
+        } else if(i.estatus === "PAGO_DTA_EN_REVISION") {
+          btnAccion = `<button class="btn btn-amber" onclick="accionValidarPagoDta('${i.folio}')">2. Validar Pago y Turnar a DES</button>`;
+        } else if(i.estatus === "PAGO_VALIDADO_EN_ESPERA_DES") {
+          btnAccion = `<button class="btn btn-green" onclick="abrirModalDta('${i.folio}')">3. Recibido de DES: Subir DTA</button>`;
+        } else if(i.estatus === "PAGO_EQUIV_EN_REVISION") {
+          btnAccion = `<button class="btn btn-amber" onclick="accionValidarPagoEquiv('${i.folio}')">4. Validar Pago y Turnar a DAE</button>`;
+        } else if(i.estatus === "PAGO_VALIDADO_EN_ESPERA_DAE") {
+          btnAccion = `<button class="btn btn-purple" onclick="abrirModalEquiv('${i.folio}')">5. Recibido de DAE: Subir y Concluir</button>`;
+        } else if(i.estatus === "TRAMITE_CONCLUIDO") {
+          btnAccion = `<strong style="color:#15803d;">✓ Concluido</strong>`;
+        }
+      }
+
+      tbody.innerHTML += `
+        <tr>
+          <td><strong>${i.folio}</strong></td>
+          <td>${i.boleta}<br><small>${i.nombre_alumno}</small></td>
+          <td>${badgeEstatus}</td>
+          <td style="font-size:11px;">${infoPago}</td>
+          <td>${btnAccion}</td>
+        </tr>
+      `;
+    });
+  }
+
+  async function accionProcedente(f) {
+    if(!confirm(`¿Declarar procedente ${f} y notificar pago de DTA al alumno?`)) return;
+    await fetch(`${API}/solicitudes/declarar-procedente`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SESION.token}` },
+      body: JSON.stringify({ folio: f })
+    });
+    cargarBandeja();
+  }
+
+  async function accionValidarPagoDta(f) {
+    const ofi = prompt("Ingresa el número de oficio con el que se turna a la DES:", "OFICIO-ESCA-DES-2026-");
+    if(!ofi) return;
+    await fetch(`${API}/solicitudes/validar-pago-dta-a-des`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SESION.token}` },
+      body: JSON.stringify({ folio: f, oficio_des: ofi })
+    });
+    cargarBandeja();
+  }
+
+  async function accionValidarPagoEquiv(f) {
+    const ofi = prompt("Ingresa el número de oficio con el que se turna a la DAE:", "OFICIO-ESCA-DAE-2026-");
+    if(!ofi) return;
+    await fetch(`${API}/solicitudes/validar-pago-equiv-a-dae`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SESION.token}` },
+      body: JSON.stringify({ folio: f, oficio_dae: ofi })
+    });
+    cargarBandeja();
+  }
+
+  function abrirModalDta(f) { document.getElementById("mdFolioDTA").value = f; document.getElementById("mdDTA").style.display = "flex"; }
+  function abrirModalEquiv(f) { document.getElementById("mdFolioEquiv").value = f; document.getElementById("mdEquiv").style.display = "flex"; }
+  function cerrarModales() { document.getElementById("mdDTA").style.display = "none"; document.getElementById("mdEquiv").style.display = "none"; }
+
+  async function guardarDtaDes(e) {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append("folio", document.getElementById("mdFolioDTA").value);
+    fd.append("archivo_dta", document.getElementById("mdFileDTA").files[0]);
+    await fetch(`${API}/solicitudes/registrar-dta-des`, { method: "POST", headers: {"Authorization": `Bearer ${SESION.token}`}, body: fd });
+    cerrarModales();
+    cargarBandeja();
+  }
+
+  async function guardarEquivDae(e) {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append("folio", document.getElementById("mdFolioEquiv").value);
+    fd.append("archivo_equiv", document.getElementById("mdFileEquiv").files[0]);
+    await fetch(`${API}/solicitudes/concluir-equiv-dae`, { method: "POST", headers: {"Authorization": `Bearer ${SESION.token}`}, body: fd });
+    cerrarModales();
+    cargarBandeja();
+  }
+
+  // --- PORTAL ALUMNO ---
+  let ALUMNO_INFO = null;
+  let FASE = null;
+
+  async function consultarAlumno() {
+    const f = document.getElementById("alFolio").value.trim();
+    const b = document.getElementById("alBoleta").value.trim();
+    const res = await fetch(`${API}/alumno/consulta?folio=${f}&boleta=${b}`);
+    if(!res.ok) return alert("Trámite no encontrado");
+    ALUMNO_INFO = await res.json();
+    const aPago = document.getElementById("areaPago");
+    const aOfi = document.getElementById("areaOficios");
+
+    if (ALUMNO_INFO.estatus === "PROCEDENTE_PAGO_DTA") {
+      FASE = "DTA";
+      document.getElementById("alTituloPago").innerText = "Pago Requerido: Dictamen Técnico Académico (DTA)";
+      document.getElementById("alSubtituloPago").innerText = "Adjunta tu comprobante para turnar tu expediente a la DES.";
+      aPago.style.display = "block";
+    } else if (ALUMNO_INFO.estatus === "SOLICITAR_PAGO_EQUIVALENCIAS") {
+      FASE = "EQUIVALENCIAS";
+      document.getElementById("alTituloPago").innerText = "Pago Requerido: Dictamen de Equivalencias";
+      document.getElementById("alSubtituloPago").innerText = "La DES emitió tu DTA. Realiza el pago para turnar tu trámite a la DAE.";
+      aPago.style.display = "block";
+    } else {
+      aPago.style.display = "none";
+      if(ALUMNO_INFO.estatus === "PAGO_VALIDADO_EN_ESPERA_DES") alert("Tu pago fue validado. El expediente está en proceso de emisión en la DES.");
+      if(ALUMNO_INFO.estatus === "PAGO_VALIDADO_EN_ESPERA_DAE") alert("Tu pago fue validado. El expediente está en proceso de emisión en la DAE.");
+    }
+
+    let docs = false;
+    const bDta = document.getElementById("btnDta");
+    const bEq = document.getElementById("btnEquiv");
+    bDta.innerHTML = ""; bEq.innerHTML = "";
+    if (ALUMNO_INFO.archivo_dta_des) {
+      docs = true;
+      bDta.innerHTML = `<a href="${API}/descargar-oficio/${ALUMNO_INFO.archivo_dta_des}" target="_blank" class="btn btn-green" style="display:inline-block; text-decoration:none;">📄 Descargar DTA (Emitido por DES)</a>`;
+    }
+    if (ALUMNO_INFO.archivo_equiv_dae) {
+      docs = true;
+      bEq.innerHTML = `<a href="${API}/descargar-oficio/${ALUMNO_INFO.archivo_equiv_dae}" target="_blank" class="btn btn-purple" style="display:inline-block; text-decoration:none;">🎓 Descargar Dictamen de Equivalencias (Emitido por DAE)</a>`;
+    }
+    aOfi.style.display = docs ? "block" : "none";
+    alternarCamposPago();
+  }
+
+  function alternarCamposPago() {
+    const m = document.getElementById("alMetodo").value;
+    document.getElementById("boxCep").style.display = m === 'TRANSFERENCIA' ? 'block' : 'none';
+    document.getElementById("fCep").required = m === 'TRANSFERENCIA';
+    document.getElementById("lblComp1").innerText = m === 'TRANSFERENCIA' ? '1. Comprobante de Transferencia SPEI:' : 'Voucher de Ventanilla Bancaria / Cajero:';
+  }
+
+  async function enviarPagoAlumno(e) {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append("folio", ALUMNO_INFO.folio);
+    fd.append("boleta", ALUMNO_INFO.boleta);
+    fd.append("fase_pago", FASE);
+    fd.append("metodo_pago", document.getElementById("alMetodo").value);
+    fd.append("archivo_comprobante", document.getElementById("fComp1").files[0]);
+    if(document.getElementById("alMetodo").value === 'TRANSFERENCIA') {
+      fd.append("archivo_cep", document.getElementById("fCep").files[0]);
+    }
+    await fetch(`${API}/alumno/subir-pago`, { method: "POST", body: fd });
+    alert("Comprobante subido. Pasó a validación administrativa en ESCA.");
+    document.getElementById("areaPago").style.display = "none";
+  }
+</script>
+</body>
+</html>
